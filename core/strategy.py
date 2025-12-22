@@ -986,7 +986,7 @@ class SehwagStrategy:
                     symbol=leg_state.symbol,
                     quantity=leg_state.quantity,
                     stop_price=leg_state.current_sl,
-                    strategy_name=f"{strategy_name}_{leg_state.name.replace(' ', '_')}"
+                    strategy_name=f"{self.strategy_name}_{leg_state.name.replace(' ', '_')}"
                 )
 
                 if sl_order_id:
@@ -1354,7 +1354,7 @@ class SehwagStrategy:
                 value = leg_state.config[key]
                 # Check if explicitly disabled (None or "null" string from YAML)
                 if value is None or (isinstance(value, str) and value.lower() in ('null', 'none', '')):
-                    # Explicitly disabled - do NOT fall back to strategy defaults
+                    # Explicitly disabled - do not fall back to strategy defaults
                     return None
                 # Has a real value
                 return value
@@ -1402,7 +1402,7 @@ class SehwagStrategy:
                             symbol=leg_state.symbol,
                             quantity=leg_state.quantity,
                             new_stop_price=new_sl_price,
-                            strategy_name=f"{strategy_name}_{leg_state.name.replace(' ', '_')}"
+                            strategy_name=f"{self.strategy_name}_{leg_state.name.replace(' ', '_')}"
                         )
                         if success:
                             leg_logger.info(f"✅ SL order modified on broker: {leg_state.sl_order_id} @ ₹{new_sl_price:.2f}")
@@ -1481,7 +1481,7 @@ class SehwagStrategy:
                         symbol=leg_state.symbol,
                         quantity=leg_state.quantity,
                         new_stop_price=profit_lock_price,
-                        strategy_name=f"{strategy_name}_{leg_state.name.replace(' ', '_')}"
+                        strategy_name=f"{self.strategy_name}_{leg_state.name.replace(' ', '_')}"
                     )
                     if success:
                         leg_logger.info(f"✅ SL order modified to lock profit: ₹{old_sl:.2f} → ₹{profit_lock_price:.2f}")
@@ -1553,7 +1553,7 @@ class SehwagStrategy:
                             symbol=leg_state.symbol,
                             quantity=leg_state.quantity,
                             new_stop_price=new_sl_price,
-                            strategy_name=f"{strategy_name}_{leg_state.name.replace(' ', '_')}"
+                            strategy_name=f"{self.strategy_name}_{leg_state.name.replace(' ', '_')}"
                         )
                         if success:
                             leg_logger.info(f"✅ SL trailed to lock more profit: ₹{old_sl:.2f} → ₹{new_sl_price:.2f} (protects {new_target:.1f}% profit)")
@@ -1631,7 +1631,7 @@ class SehwagStrategy:
                 try:
                     success = self.order_manager.cancel_sl_order(
                         order_id=sl_order_id,
-                        strategy_name=f"{strategy_name}_{leg_state.name.replace(' ', '_')}"
+                        strategy_name=f"{self.strategy_name}_{leg_state.name.replace(' ', '_')}"
                     )
                     if success:
                         leg_logger.info(f"✅ SL order canceled on broker: {sl_order_id}")

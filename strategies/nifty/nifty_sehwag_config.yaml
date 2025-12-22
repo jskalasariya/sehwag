@@ -118,7 +118,7 @@ legs:
 
 # Order Configuration
 orders:
-  auto_place_orders: false           # false = simulation, true = live trading
+  auto_place_orders: true           # false = simulation, true = live trading
   price_type: "MARKET"
   product: "NRML"
   entry_action: "BUY"
