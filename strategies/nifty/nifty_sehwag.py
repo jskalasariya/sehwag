@@ -99,6 +99,9 @@ def run_strategy_main_loop():
     print("🚀 Nifty Sehwag Strategy v3.0 (Clean & Modular)")
     print("="*70 + "\n")
 
+    # Initialize logger variable early so exception handlers can safely reference it
+    logger = None
+
     try:
         # Load configuration
         print("📋 Loading configuration...")
