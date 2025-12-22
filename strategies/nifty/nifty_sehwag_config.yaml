@@ -1,0 +1,188 @@
+# Nifty Sehwag Strategy Configuration
+
+# API Configuration
+api:
+  key: your_openalgo_api_key
+  host: http://127.0.0.1:5000
+
+# Strategy Param
+strategy:
+  underlying: "NIFTY"                    # NIFTY, BANKNIFTY, FINNIFTY, MIDCPNIFTY
+  underlying_exchange: "NSE_INDEX"
+  option_exchange: "NFO"
+  strike_diff: 50                        # NIFTY: 50, BANKNIFTY: 100
+  lot_size: 75                           # NIFTY: 75, BANKNIFTY: 15
+  lot_multiplier: 2                      # Strategy-level multiplier (quantity = lot_size × lot × lot_multiplier)
+  timezone: "Asia/Kolkata"
+  
+  test_mode: false                        # true = simulation, false = live trading
+  allow_multiple_runs_per_day: true     # true = testing, false = production safety
+  execution_mode: "parallel"             # "parallel" or "sequential"
+
+  # Wait & Trade - default for all legs (can be overridden per leg)
+  wait_trade_threshold_pct: 2.0          # Price move % required before entry
+  wait_trade_timeout_seconds: 300        # Max wait time (5 minutes)
+
+  # Breakout analysis
+  candle_interval: "3m"
+  lookback_candles_minutes: 3
+
+  # Breakout Distance Delay - default for all legs (can be overridden per leg)
+  breakout_diff_threshold: 90            # Points difference threshold (null = disabled)
+  breakout_diff_delay_seconds: 120       # Seconds to delay entry if threshold exceeded
+
+  # Performance tuning (sleep intervals in seconds)
+  wait_trade_check_interval: 0.1         # How often to check price during Wait & Trade
+  monitor_check_interval: 0.1            # How often to check position (with WebSocket)
+  monitor_check_interval_no_ws: 0.5      # How often to check position (without WebSocket)
+  error_retry_interval: 1.0              # Wait time after error before retry
+
+# Strategy Scheduling
+schedule:
+  strategy_start_hour: 8
+  strategy_start_minute: 14              # Start before first leg entry
+  strategy_start_second: 0
+  end_hour: 15                           # Default end time for all legs
+  end_minute: 00
+
+legs:
+  # Leg 1: ITM2, 3 lots (quantity = 75 × 3 × 2 = 450)
+  - name: "profit lock with trail"
+    enabled: true
+    entry_time: "09:15:10"
+    exit_time: "11:30:00"
+    strike_type: "ITM2"                # ATM, ITM1-4, OTM1-4
+    lot: 3                             # Leg-level lot count (default: 1)
+
+    initial_sl_pct: 7.0                # Initial stop loss %
+    sl_trail_trigger_pct: null         # Trailing SL: trigger % (null = disabled)
+    sl_trail_move_pct: null            # Trailing SL: move %
+
+    lock_trigger_pct: 6.0             # Trigger lock at 6% profit
+    first_lock_pct: 2.0                # Lock 2% profit initially
+    trail_trigger_pct: 2.0             # Every 2% profit increase → trail lock up
+    trail_move_pct: 1.0                # Move lock up by 2% (6%→2%, 8%→4%, 10%→6%)
+    auto_close_profit_pct: "null"        # Auto-close at X% profit (null = disabled)
+
+#    wait_trade_threshold_pct: 2      # Wait for 1% move before entry
+#    wait_trade_timeout_seconds: 300
+    wait_trade_reset_enabled: true    # Enable reset if price drops during wait
+    wait_trade_reset_drop_pct: 3   # Drop % to trigger reset (e.g., 1.0 = reset if drops 1%)
+
+  # Leg 2: ITM3, uses default lot=1 (quantity = 75 × 1 × 2 = 150)
+  - name: "profit lock with auto close"
+    enabled: true
+    entry_time: "09:15:10"
+    exit_time: "11:30:00"
+    strike_type: "ITM3"
+
+    initial_sl_pct: 7.0
+    sl_trail_trigger_pct: null
+    sl_trail_move_pct: null
+
+    lock_trigger_pct: 6.0
+    first_lock_pct: 2.0
+    trail_trigger_pct: 2.0
+    trail_move_pct: 1.0
+    auto_close_profit_pct: "12.0"
+
+#    wait_trade_threshold_pct: 2
+#    wait_trade_timeout_seconds: 300
+    wait_trade_reset_enabled: true    # Enable reset if price drops during wait
+    wait_trade_reset_drop_pct: 3    # Drop % to trigger reset (e.g., 1.0 = reset if drops 1%)
+
+  # Leg 3: ITM3, uses default lot=1 (quantity = 75 × 1 × 2 = 150)
+  - name: "trailing sl only"
+    enabled: true
+    entry_time: "09:15:35"
+    exit_time: "11:30:00"
+    strike_type: "ITM3"
+    initial_sl_pct: 7.0
+    sl_trail_trigger_pct: 1.0
+    sl_trail_move_pct: 1.0
+
+    lock_trigger_pct: null
+    first_lock_pct: null
+    trail_trigger_pct: null
+    trail_move_pct: null
+    auto_close_profit_pct: null
+
+#    wait_trade_threshold_pct: 2
+#    wait_trade_timeout_seconds: 300
+    wait_trade_reset_enabled: true    # Enable reset if price drops during wait
+    wait_trade_reset_drop_pct: 3    # Drop % to trigger reset (e.g., 1.0 = reset if drops 1%)
+
+    breakout_diff_threshold: null      # Disable distance delay for this leg
+    breakout_diff_delay_seconds: 60
+
+
+# Order Configuration
+orders:
+  auto_place_orders: false           # false = simulation, true = live trading
+  price_type: "MARKET"
+  product: "NRML"
+  entry_action: "BUY"
+  exit_action: "SELL"
+
+  # Stop Loss Order Management
+  place_sl_order: true               # Place SL orders on broker orderbook
+  sl_order_type: "SL"                # SL = SL-Limit order (both Nifty Sehwag and Expiry Blast use SL-L)
+  sl_limit_buffer_percent: 0.015     # 1.5% buffer between trigger and limit
+  sl_use_percent_buffer: true
+
+# Logging Configuration
+logging:
+  print_quotes_immediately: true
+  print_candle_data: true
+  print_position_updates: true
+
+# WebSocket Configuration (Real-time LTP)
+websocket:
+  enabled: true                      # Falls back to REST API if disabled/fails
+  url: "ws://127.0.0.1:8765"
+  timeout_seconds: 10
+  reconnect_interval_seconds: 5
+
+# ================================================================================
+# QUICK REFERENCE
+# ================================================================================
+
+# TRAILING STOP LOSS:
+# - sl_trail_trigger_pct: Every X% profit, move SL up by Y%
+# - Example: Entry ₹100, trigger 2%, move 1%
+#   At ₹102 profit → SL moves from ₹93 to ₹94.93
+
+# TWO-STAGE PROFIT LOCK (Recommended):
+# - lock_trigger_pct: Activate lock at X% profit
+# - first_lock_pct: Set exit target at Y% when lock triggers
+# - trail_trigger_pct: Trail exit every Z% profit increase
+# - trail_move_pct: Trail exit target down by W%
+# - Example: Lock at 10%, exit target 2%, trail every 2% by 1%
+#   At 10% profit → Lock triggers, exit at 2%
+#   At 12% profit → Exit target trails to 1%
+#   Falls to 1% → Exit position
+
+# AUTO CLOSE:
+# - auto_close_profit_pct: Exit immediately at X% profit (overrides all)
+
+# COMBINED:
+# - Use both trailing SL + profit lock for full protection + upside
+
+# WAIT & TRADE RESET:
+# - wait_trade_reset_enabled: Enable automatic reset if price drops
+# - wait_trade_reset_drop_pct: Drop % from peak to trigger reset
+# - Example: Reset enabled at 1.5% drop
+#   Price rises to ₹105 (peak), drops to ₹103.43 → Reset triggered
+#   New reference price: ₹103.43, wait for +2.5% again
+# - Prevents chasing high entry prices after pullbacks
+
+# BREAKOUT DISTANCE DELAY (Simple Time Shift):
+# - breakout_diff_threshold: Points difference threshold (null = disabled)
+# - breakout_diff_delay_seconds: Seconds to delay entry if threshold exceeded
+# - Example: Threshold 80, delay 60s
+#   09:15:10 - Check: Distance 100 > 80 threshold
+#   09:15:10 - Delay entry by 60 seconds
+#   09:16:10 - Proceed with entry at new time (no re-check)
+# - Simple behavior: Just shifts entry time forward, doesn't re-validate
+# - Prevents entering immediately after large gap/volatile move
+
