@@ -12,7 +12,7 @@ strategy:
   option_exchange: "NFO"
   strike_diff: 50                        # NIFTY: 50, BANKNIFTY: 100
   lot_size: 75                           # NIFTY: 75, BANKNIFTY: 15
-  lot_multiplier: 2                      # Strategy-level multiplier (quantity = lot_size × lot × lot_multiplier)
+  lot_multiplier: 1                      # Strategy-level multiplier (quantity = lot_size × lot × lot_multiplier)
   timezone: "Asia/Kolkata"
   
   test_mode: false                        # true = simulation, false = live trading
@@ -52,7 +52,7 @@ legs:
     entry_time: "09:15:10"
     exit_time: "11:30:00"
     strike_type: "ITM2"                # ATM, ITM1-4, OTM1-4
-    lot: 3                             # Leg-level lot count (default: 1)
+    lot: 2                             # Leg-level lot count (default: 1)
 
     initial_sl_pct: 7.0                # Initial stop loss %
     sl_trail_trigger_pct: null         # Trailing SL: trigger % (null = disabled)

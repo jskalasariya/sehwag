@@ -766,7 +766,8 @@ class SehwagStrategy:
 
     def _wait_for_trade_confirmation(self, option_symbol: str, threshold_pct: float,
                                      leg_logger, timeout: int, reset_enabled: bool = False,
-                                     reset_drop_pct: Optional[float] = None) -> bool:
+                                     reset_drop_pct: Optional[float] = None,
+                                     debug_return_reset_count: bool = False) -> bool:
         """
         Wait for OPTION price to move threshold_pct from initial price
 
@@ -795,7 +796,9 @@ class SehwagStrategy:
         price_difference = target_price - reference_price
 
         # Initialize peak tracking for reset logic
-        peak_price = reference_price
+        # highest_since_reference tracks the highest option price observed since the
+        # most recent reference price (resets when we perform a wait&trade reset).
+        highest_since_reference = reference_price
         reset_count = 0
 
         # Get current NIFTY spot for context
@@ -844,9 +847,9 @@ class SehwagStrategy:
                     current_price = float(quote['ltp'])
 
             if current_price:
-                # Update peak price
-                if current_price > peak_price:
-                    peak_price = current_price
+                # Update highest seen since the last reference (re-arm for resets)
+                if current_price > highest_since_reference:
+                    highest_since_reference = current_price
 
                 # Check if threshold reached (option prices always move upward for positive movement)
                 move_pct = ((current_price - reference_price) / reference_price) * 100
@@ -860,22 +863,22 @@ class SehwagStrategy:
                     if reset_count > 0:
                         leg_logger.info(f"   Resets triggered: {reset_count}")
                     leg_logger.info("=" * 80)
-                    return True
+                    return (True, reset_count) if debug_return_reset_count else True
 
-                # Check for reset condition
-                if reset_enabled and reset_drop_pct and peak_price > reference_price:
-                    drop_from_peak = ((peak_price - current_price) / peak_price) * 100
+                # Check for reset condition using highest_since_reference (robust re-arm)
+                if reset_enabled and reset_drop_pct:
+                    drop_from_peak = ((highest_since_reference - current_price) / highest_since_reference) * 100
 
                     if drop_from_peak >= reset_drop_pct:
                         reset_count += 1
                         old_reference = reference_price
                         old_target = target_price
-                        old_peak = peak_price
+                        old_peak = highest_since_reference
 
-                        # Reset to current price
+                        # Reset to current price and re-arm highest_since_reference
                         reference_price = current_price
                         target_price = reference_price * (1 + threshold_pct / 100)
-                        peak_price = current_price
+                        highest_since_reference = current_price
 
                         leg_logger.warning("=" * 80)
                         leg_logger.warning(f"🔄 WAIT & TRADE RESET #{reset_count}")
@@ -916,7 +919,7 @@ class SehwagStrategy:
                     leg_logger.warning(f"   Resets triggered: {reset_count}")
                 leg_logger.warning(f"   Entry SKIPPED - threshold not reached in time")
                 leg_logger.warning("=" * 80)
-                return False
+                return (False, reset_count) if debug_return_reset_count else False
 
             time.sleep(self.wait_trade_check_interval)
 
@@ -1192,11 +1195,11 @@ class SehwagStrategy:
 
             # Ensure leg_state values are also float
             if not isinstance(leg_state.highest_price, (int, float)):
-                leg_logger.error(f"Type error: highest_price is {type(leg_state.highest_price).__name__}: {leg_state.highest_price}")
+                leg_logger.error(f"Type error: highest_price is {type(leg_state.highest_price).__name__}: {leg_state.highest_price!r}")
                 leg_state.highest_price = float(leg_state.highest_price)
 
             if not isinstance(leg_state.current_sl, (int, float)):
-                leg_logger.error(f"Type error: current_sl is {type(leg_state.current_sl).__name__}: {leg_state.current_sl}")
+                leg_logger.error(f"Type error: current_sl is {type(leg_state.current_sl).__name__}: {leg_state.current_sl!r}")
                 leg_state.current_sl = float(leg_state.current_sl)
         except (TypeError, ValueError) as e:
             leg_logger.error(f"Price type conversion error in handle_price_update: current_price={current_price} (type={type(current_price).__name__}), error={e}")
@@ -1405,7 +1408,7 @@ class SehwagStrategy:
                             strategy_name=f"{self.strategy_name}_{leg_state.name.replace(' ', '_')}"
                         )
                         if success:
-                            leg_logger.info(f"✅ SL order modified on broker: {leg_state.sl_order_id} @ ₹{new_sl_price:.2f}")
+                            leg_logger.info(f"✅ SL order modified on broker: {sl_order_id} @ ₹{new_sl_price:.2f}")
 
                             # Log to database
                             if self.persistence:
