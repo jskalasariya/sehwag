@@ -96,11 +96,25 @@ class LegState:
 
     def calculate_pnl(self, current_price: float) -> tuple[float, float]:
         """Calculate P&L"""
-        if not self.entry_price or not self.is_active:
+        # Compute P&L based only on stored entry price and quantity. Do NOT rely on
+        # `is_active` here because this method is called during the exit flow where
+        # `is_active` may already be cleared. Return safe defaults if entry_price
+        # is missing or invalid.
+        if self.entry_price is None:
             return 0.0, 0.0
 
-        pnl = (current_price - self.entry_price) * self.quantity
-        pnl_pct = ((current_price - self.entry_price) / self.entry_price) * 100
+        try:
+            entry = float(self.entry_price)
+            exitp = float(current_price)
+        except Exception:
+            return 0.0, 0.0
+
+        qty = int(self.quantity) if getattr(self, 'quantity', None) is not None else 0
+
+        price_change = exitp - entry
+        pnl = price_change * qty
+        pnl_pct = (price_change / entry * 100.0) if entry != 0 else 0.0
+
         return pnl, pnl_pct
 
 
